@@ -32,7 +32,7 @@ class PerplexityService:
     ) -> Dict:
         """투자 분석 보고서 생성"""
         # 1. 템플릿 로드
-        template_path = Path(__file__).parent.parent.parent.parent / "docs" / "invest-by-perplexity-api2.md"
+        template_path = Path(__file__).parent.parent.parent / "docs" / "invest-by-perplexity-api2.md"
         with open(template_path, "r", encoding="utf-8") as f:
             template = f.read()
 
