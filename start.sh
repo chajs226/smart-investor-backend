@@ -3,8 +3,17 @@
 
 export ENABLE_SERVER_SAVE=true
 
-cd backend
-source venv/bin/activate || source .venv/bin/activate
+# 가상환경이 있다면 활성화
+if [ -d "venv" ]; then
+    source venv/bin/activate
+elif [ -d ".venv" ]; then
+    source .venv/bin/activate
+else
+    echo "가상환경을 찾을 수 없습니다. 새로 생성합니다..."
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+fi
 
 # Uvicorn 옵션:
 # --timeout-keep-alive: 유휴 연결 타임아웃 (초)
