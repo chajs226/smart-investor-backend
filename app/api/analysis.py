@@ -3,6 +3,7 @@ from typing import Optional
 from ..models.analysis import AnalysisRequest, AnalysisResponse, SaveMarkdownRequest
 from ..services.naver_crawler import NaverFinancialCrawler
 from ..services.perplexity_service import PerplexityService
+from ..services.supabase_service import SupabaseReportStore
 import pandas as pd
 from pathlib import Path
 import os
@@ -82,7 +83,7 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
     except Exception:
         financial_table_md = "(재무 표 생성 실패)"
 
-    return AnalysisResponse(
+    response = AnalysisResponse(
         stock_code=request.stock_code,
         stock_name=request.stock_name,
         compare_periods=request.compare_periods,
@@ -93,6 +94,27 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
         usage=formatted_response["usage"],
         created=formatted_response["created"]
     )
+    # 4. Supabase 저장 (실패하더라도 API 응답은 반환)
+    try:
+        saved_market = "KOSPI" if market == "국내" else "NASDAQ"
+        SupabaseReportStore.save_report(
+            market=saved_market,
+            symbol=request.stock_code,
+            name=request.stock_name,
+            sector=None,
+            report={
+                "analysis": response.analysis,
+                "financial_table": response.financial_table,
+                "citations": response.citations,
+                "model": response.model,
+                "usage": response.usage,
+                "created": response.created,
+            },
+            user_id=None,
+        )
+    except Exception as e:
+        print(f"[Supabase] 저장 실패: {e}")
+    return response
 
 
 @router.post("/save_markdown")
