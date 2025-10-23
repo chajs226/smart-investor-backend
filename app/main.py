@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import financial, analysis
 import logging
+from dotenv import load_dotenv
+
+# .env 파일 로드 (프로젝트 루트에서)
+load_dotenv()
 
 # 로깅 설정
 logging.basicConfig(
