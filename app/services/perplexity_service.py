@@ -6,21 +6,25 @@ from datetime import datetime
 import requests
 
 class PerplexityService:
-    def __init__(self, api_key: str, model: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         """Perplexity API 서비스 초기화
 
         Args:
-            api_key: Perplexity API 키
-            model: 사용할 모델명 (미지정 시 환경변수 PERPLEXITY_MODEL 또는 기본값)
+            api_key: Perplexity API 키 (미지정 시 환경변수 PERPLEXITY_API_KEY 사용)
+            model: 사용할 모델명 (미지정 시 환경변수 PERPLEXITY_DEFAULT_MODEL 또는 기본값)
         """
-        self.api_key = api_key
+        # API 키: 파라미터 우선, 없으면 환경변수에서 읽기
+        self.api_key = api_key or os.getenv("PERPLEXITY_API_KEY")
+        if not self.api_key:
+            raise ValueError("Perplexity API 키가 설정되지 않았습니다. 환경변수 PERPLEXITY_API_KEY를 설정하거나 파라미터로 전달하세요.")
+        
         self.base_url = "https://api.perplexity.ai/chat/completions"
         self.headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        # 기본 온라인 접근 가능한 모델 (환경변수 PERPLEXITY_MODEL 로 재정의 가능)
-        self.model = model or os.getenv("PERPLEXITY_MODEL", "sonar-pro")
+        # 모델: 파라미터 > 환경변수 PERPLEXITY_DEFAULT_MODEL > 기본값
+        self.model = model or os.getenv("PERPLEXITY_DEFAULT_MODEL", "sonar-deep-research")
 
     async def generate_investment_analysis(
         self,

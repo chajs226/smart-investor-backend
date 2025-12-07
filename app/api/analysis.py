@@ -40,9 +40,10 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
         raise HTTPException(status_code=404, detail="재무 데이터를 찾을 수 없습니다.")
 
     # 2. Perplexity API를 통한 분석
-    # 우선순위: 쿼리 파라미터 model > 요청 body model > 환경변수
+    # API 키는 환경변수에서 자동으로 읽음
+    # 모델: 쿼리 파라미터 > 요청 body > 환경변수 PERPLEXITY_DEFAULT_MODEL
     effective_model = model or request.model
-    perplexity_service = PerplexityService(request.api_key, model=effective_model)
+    perplexity_service = PerplexityService(model=effective_model)
     try:
         api_response = await perplexity_service.generate_investment_analysis(
             request.stock_name,
