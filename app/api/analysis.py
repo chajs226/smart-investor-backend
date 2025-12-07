@@ -17,8 +17,10 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
     기업 재무정보를 크롤링하고 Perplexity API를 통해 투자 분석 보고서 생성
     """
     # 1. 재무 데이터 크롤링 (시장 구분)
-    market = (request.market or "국내").strip()
-    if market == "국내":
+    market = (request.market or "한국").strip()
+    is_korea = market in ["한국", "국내"]
+    
+    if is_korea:
         csv_path, financial_data = await crawler.fetch_financials(
             request.stock_code,
             request.compare_periods
@@ -27,7 +29,7 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
         # 해외 시장: 현재는 네이버 크롤러가 국내만 지원. 임시로 재무데이터 없이 진행.
         csv_path, financial_data = None, []
 
-    if market == "국내" and not financial_data:
+    if is_korea and not financial_data:
         # 상세 오류 파악 (예: lxml 미설치)
         last_error = getattr(crawler, "last_error", None)
         if last_error and "lxml" in last_error.lower():
@@ -38,9 +40,10 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
         raise HTTPException(status_code=404, detail="재무 데이터를 찾을 수 없습니다.")
 
     # 2. Perplexity API를 통한 분석
-    # 우선순위: 쿼리 파라미터 model > 요청 body model > 환경변수
+    # API 키는 환경변수에서 자동으로 읽음
+    # 모델: 쿼리 파라미터 > 요청 body > 환경변수 PERPLEXITY_DEFAULT_MODEL
     effective_model = model or request.model
-    perplexity_service = PerplexityService(request.api_key, model=effective_model)
+    perplexity_service = PerplexityService(model=effective_model)
     try:
         api_response = await perplexity_service.generate_investment_analysis(
             request.stock_name,
@@ -96,7 +99,8 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
     )
     # 4. Supabase 저장 (실패하더라도 API 응답은 반환)
     try:
-        saved_market = "KOSPI" if market == "국내" else "NASDAQ"
+        # market 값을 DB 스키마에 맞게 변환 (한국/국내 -> KOSPI, 미국 -> NASDAQ)
+        saved_market = "KOSPI" if is_korea else "NASDAQ"
         SupabaseReportStore.save_report(
             market=saved_market,
             symbol=request.stock_code,
@@ -105,6 +109,7 @@ async def analyze_investment(request: AnalysisRequest, model: Optional[str] = No
             report={
                 "analysis": response.analysis,
                 "financial_table": response.financial_table,
+                "compare_periods": response.compare_periods,  # 추가
                 "citations": response.citations,
                 "model": response.model,
                 "usage": response.usage,
